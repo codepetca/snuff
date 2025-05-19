@@ -52,8 +52,16 @@ export const userService = new Elysia({ name: 'user/service' })
     },
   })
 
-export const user = new Elysia({ prefix: '/user' })
+export const getUserId = new Elysia()
   .use(userService)
+  .guard({ cookie: 'session' })
+  .resolve(({ store: { session }, cookie: { token } }) => ({
+    username: session[token.value],
+  }))
+  .as('scoped')
+
+export const user = new Elysia({ prefix: '/user' })
+  .use(getUserId)
   .put(
     '/sign-up',
     async ({ body: { username, password }, store, status }) => {
@@ -116,13 +124,10 @@ export const user = new Elysia({ prefix: '/user' })
   )
   .get(
     '/profile',
-    ({ cookie: { token }, store: { session } }) => {
-      const username = session[token.value]
-      return {
-        success: true,
-        username,
-      }
-    },
+    ({ username }) => ({
+      success: true,
+      username,
+    }),
     {
       cookie: 'session',
       isSignIn: true,
