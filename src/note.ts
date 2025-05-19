@@ -18,34 +18,38 @@ class Note {
   }
 }
 
-export const note = new Elysia()
+export const note = new Elysia({ prefix: '/note' })
   .decorate('note', new Note())
-  .get('/note', ({ note }) => note.data)
-  .get(
-    '/note/:index',
-    ({ note, params: { index }, status }) => {
-      return note.data[index] ?? status(404, 'Ruh roh :(');
-    },
-    {
-      params: t.Object({
-        index: t.Number(),
-      }),
-    }
-  )
-  .put('/note', ({ note, body }) => note.add(body.title), {
+  .onTransform(function log({ body, params, path, request: { method } }) {
+    console.log(`${method} ${path}`, { body, params });
+  })
+  .get('/', ({ note }) => note.data)
+  .put('/', ({ note, body: { data } }) => note.add(data), {
     body: t.Object({
-      title: t.String(),
+      data: t.String(),
     }),
   })
-  .delete(
-    '/note/:index',
-    ({ note, params: { index }, status }) => {
-      if (index in note.data) return note.remove(index);
-      return status(404, 'Ruh roh :(');
+  .guard({
+    params: t.Object({
+      index: t.Number(),
+    }),
+  })
+  .get('/:index', ({ note, params: { index }, status }) => {
+    return note.data[index] ?? status(404, 'Ruh roh :(');
+  })
+  .delete('/:index', ({ note, params: { index }, status }) => {
+    if (index in note.data) return note.remove(index);
+    return status(404, 'Ruh roh :p');
+  })
+  .patch(
+    '/:index',
+    ({ note, params: { index }, body: { data }, status }) => {
+      if (index in note.data) return note.update(index, data);
+      return status(404, 'Ruh roh :o');
     },
     {
-      params: t.Object({
-        index: t.Number(),
+      body: t.Object({
+        data: t.String(),
       }),
     }
   );
