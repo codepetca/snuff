@@ -5,6 +5,28 @@ export const user = new Elysia({ prefix: '/user' })
     user: {} as Record<string, string>,
     session: {} as Record<number, string>,
   })
+  .model({
+    signIn: t.Object({
+      username: t.String({ minLength: 1 }),
+      password: t.String({ minLength: 4 }),
+    }),
+    session: t.Cookie(
+      {
+        token: t.Number(),
+      },
+      {
+        secrets: 'seia',
+      }
+    ),
+    optionalSession: t.Cookie(
+      {
+        token: t.Optional(t.Number()),
+      },
+      {
+        secrets: 'seia',
+      }
+    ),
+  })
   .put(
     '/sign-up',
     async ({ body: { username, password }, store, status }) => {
@@ -20,10 +42,7 @@ export const user = new Elysia({ prefix: '/user' })
       });
     },
     {
-      body: t.Object({
-        username: t.String(),
-        password: t.String(),
-      }),
+      body: 'signIn',
     }
   )
   .post(
@@ -51,17 +70,38 @@ export const user = new Elysia({ prefix: '/user' })
       });
     },
     {
-      body: t.Object({
-        username: t.String(),
-        password: t.String(),
-      }),
-      cookie: t.Cookie(
-        {
-          token: t.Number(),
-        },
-        {
-          secrets: 'seia',
-        }
-      ),
+      body: 'signIn',
+      cookie: 'session',
+    }
+  )
+  .get(
+    '/sign-out',
+    async ({ cookie: { token } }) => {
+      token.remove();
+      return {
+        success: true,
+        message: 'Signed out',
+      };
+    },
+    {
+      cookie: 'optionalSession',
+    }
+  )
+  .get(
+    '/profile',
+    ({ cookie: { token }, store: { session }, status }) => {
+      const username = session[token.value];
+      if (!username)
+        return status(401, {
+          success: false,
+          message: 'Unauthorized',
+        });
+      return {
+        success: true,
+        username,
+      };
+    },
+    {
+      cookie: 'session',
     }
   );
